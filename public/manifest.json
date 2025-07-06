@@ -1,0 +1,21 @@
+{
+  "name": "파크골프스코어",
+  "short_name": "파크골프스코어",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0a8754",
+  "description": "파크골프 점수 기록 및 관리 앱",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
