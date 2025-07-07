@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '4-스코어',
+  title: '파크골프스코어',
   description: '간편한 골프 스코어 기록',
 };
 
