@@ -322,7 +322,7 @@ const handleEditDialogSave = () => {
       tabIndex={-1}
       onClick={e => {
         e.stopPropagation();
-        handleDeleteCourse(e, course.id);
+        handleDeleteClick(e, course.id);
       }}
     >
       <Trash2 className="w-5 h-5 text-destructive" />
@@ -411,7 +411,7 @@ const handleEditDialogSave = () => {
           <DialogHeader>
             <DialogTitle>구장 삭제</DialogTitle>
             <DialogDescription>
-              이 구장을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              이 구장을 정말로 삭제하시겠습니까?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

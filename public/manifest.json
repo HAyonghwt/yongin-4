@@ -1,7 +1,8 @@
 {
   "name": "파크골프스코어",
-  "short_name": "파크골프스코어",
-  "start_url": ".",
+  "short_name": "파크스코어",
+  "id": "/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0a8754",
@@ -16,6 +17,22 @@
       "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "파크골프스코어 데스크톱 화면"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "파크골프스코어 모바일 화면"
     }
   ]
 }

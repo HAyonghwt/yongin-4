@@ -13,7 +13,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /^https?:.*\.(?:js|css)$/, // JS/CSS
+      urlPattern: /^https?:.*\.(?:js|css)$/,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'static-resources',
@@ -21,7 +21,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /^https?:.*\.(?:png|jpg|jpeg|svg|gif|ico|webp)$/, // Images
+      urlPattern: /^https?:.*\.(?:png|jpg|jpeg|svg|gif|ico|webp)$/,
       handler: 'CacheFirst',
       options: {
         cacheName: 'image-cache',
@@ -29,7 +29,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      urlPattern: /^https?:.*\.(?:json)$/, // JSON (manifest, etc)
+      urlPattern: /^https?:.*\.(?:json)$/,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'json-cache',
@@ -38,12 +38,13 @@ const withPWA = require('next-pwa')({
     },
   ],
   fallbacks: {
-    document: '/offline.html', // 오프라인 fallback 페이지
+    document: '/offline.html',
     image: '/icons/icon-192x192.png',
   },
 });
 
 const nextConfig = {
+  reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
   },
