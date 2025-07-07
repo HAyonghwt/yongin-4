@@ -268,6 +268,11 @@ export default function RecordsPage() {
         </Card>
       </div>
 
+      {/* 안내 문구 */}
+      <div className="mb-6 text-center text-sm sm:text-base text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis px-2">
+        기록은 아래 날짜별로 보관되어 있어요
+      </div>
+
       {/* 월별-일별 아코디언 */}
       <main className="space-y-4 flex-grow">
         {Object.entries(grouped).length > 0 ? (
