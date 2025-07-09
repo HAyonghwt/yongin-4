@@ -227,7 +227,7 @@ const handleEditDialogSave = () => {
       <header className="text-center my-8">
         <div className="flex items-center justify-center gap-1.5">
           <GolfFlagIcon className="w-8 h-8" />
-          <h1 className="text-2xl font-bold whitespace-nowrap">
+          <h1 className="text-2xl font-bold whitespace-nowrap select-none cursor-default">
             {userName}의 파크골프
           </h1>
           <Dialog open={isNameDialogOpen} onOpenChange={setIsNameDialogOpen}>
@@ -279,7 +279,7 @@ const handleEditDialogSave = () => {
               >
                 <CardHeader className="p-3 flex flex-row items-center justify-between gap-2">
                   <div className="flex-grow overflow-hidden">
-                    <CardTitle className="text-lg font-semibold truncate">{course.name}</CardTitle>
+                    <CardTitle className="text-lg font-semibold truncate stadium-name select-none cursor-pointer">{course.name}</CardTitle>
                     <CardDescription className="truncate text-base">{course.courses.length}개 코스 ({course.courses.map(c => c.name).join(', ')}코스)</CardDescription>
                   </div>
                   <div className="flex items-center gap-1">

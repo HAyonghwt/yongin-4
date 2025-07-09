@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+.stadium-name {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  cursor: pointer;
+}
+
+
 @layer base {
   :root, [data-theme="pogok"] {
     --background: 210 20% 98%;
