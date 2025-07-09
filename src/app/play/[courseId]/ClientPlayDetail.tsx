@@ -293,6 +293,8 @@ export default function ClientPlayDetail() {
     setPlayerCurrentStep([0, 0, 0, 0]);
   }, [activeCourseIndex]);
 
+  // 점수 리셋/전체 리셋 시에도 상태 동기화(useEffect에서 이미 보장됨)
+
   const [isNameModalOpen, setIsNameModalOpen] = useState(false);
   const [tempPlayerNames, setTempPlayerNames] = useState(playerNames);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -306,9 +308,25 @@ export default function ClientPlayDetail() {
   const [isConfirmingAllReset, setIsConfirmingAllReset] = useState(false);
 
   // [플레이어별 시작홀/진행상태 state 배열로 관리]
-  const [playerStartHole, setPlayerStartHole] = useState<(number|null)[]>([null, null, null, null]); // 각 플레이어별 시작홀
-  const [playerInputOrder, setPlayerInputOrder] = useState<{hole: number, player: number}[][]>([[], [], [], []]); // 각 플레이어별 입력 순서
-  const [playerCurrentStep, setPlayerCurrentStep] = useState<number[]>([0, 0, 0, 0]); // 각 플레이어별 현재 입력 인덱스
+const [playerStartHole, setPlayerStartHole] = useState<(number|null)[]>([null, null, null, null]); // 각 플레이어별 시작홀
+const [playerInputOrder, setPlayerInputOrder] = useState<{hole: number, player: number}[][]>([[], [], [], []]); // 각 플레이어별 입력 순서
+const [playerCurrentStep, setPlayerCurrentStep] = useState<number[]>([0, 0, 0, 0]); // 각 플레이어별 현재 입력 인덱스
+
+// [상태 동기화: playerStartHole이 바뀔 때 항상 playerInputOrder, playerCurrentStep도 맞춰준다]
+useEffect(() => {
+  setPlayerInputOrder(prev => prev.map((order, idx) => {
+    if (playerStartHole[idx] !== null && (order.length === 0 || (order[0]?.hole !== playerStartHole[idx]))) {
+      return makePlayerInputOrder(playerStartHole[idx] as number, idx);
+    }
+    return order;
+  }));
+  setPlayerCurrentStep(prev => prev.map((step, idx) => {
+    if (playerStartHole[idx] !== null && step !== 0) {
+      return 0;
+    }
+    return step;
+  }));
+}, [playerStartHole]);
 
   // 수정 모드 state 추가
   const [isEditing, setIsEditing] = useState(false);

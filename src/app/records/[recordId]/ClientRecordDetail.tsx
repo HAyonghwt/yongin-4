@@ -70,8 +70,10 @@ export default function ClientRecordDetail() {
 
     const recordDate = new Date(record.date);
 
+    // 대표 코스 식별자 추출 (A/B/C/D 등, 없으면 'a' 기본)
+    const courseKey = (record?.courseKey || record?.courseName?.[0] || 'a').toLowerCase();
     return (
-        <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background">
+        <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background" data-theme={`course-${courseKey}`}>
             <header className="flex items-center justify-between my-6">
                 <Button variant="ghost" size="icon" onClick={() => router.push('/records')}>
                     <ArrowLeft className="w-6 h-6"/>
