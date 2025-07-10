@@ -21,6 +21,17 @@ export default function ClientRecordDetail() {
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
+        // [Workaround] 페이지 첫 로드 시 발생하는 서버/클라이언트 렌더링 불일치(Hydration)로 인한
+        // 테마 색상 깨짐 현상을 해결하기 위해, 첫 방문 시에만 페이지를 한 번 새로고침합니다.
+        // 이 방법은 근본적인 해결책은 아니지만, 현재 겪고 있는 복잡한 렌더링 오류를
+        // 안정적으로 우회하는 실용적인 해결책입니다.
+        const reloadedKey = `reloaded_record_${recordId}`;
+        if (sessionStorage.getItem(reloadedKey) !== 'true') {
+            sessionStorage.setItem(reloadedKey, 'true');
+            window.location.reload();
+            return; // 새로고침 후에는 아래 로직을 실행하지 않음
+        }
+
         setIsClient(true);
         if (recordId) {
             const savedRecords = localStorage.getItem('golfGameRecords');
@@ -70,7 +81,6 @@ export default function ClientRecordDetail() {
 
     const recordDate = new Date(record.date);
 
-    // 대표 코스 식별자 추출 (A/B/C/D 등, 없으면 'a' 기본)
     const courseKey = (record?.courseKey || record?.courseName?.[0] || 'a').toLowerCase();
     return (
         <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background" data-theme={`course-${courseKey}`}>
