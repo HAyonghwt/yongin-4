@@ -960,9 +960,53 @@ useEffect(() => {
             {numberPadButtons.slice(5).map(num => (
               <Button key={num} onClick={() => handleNumberPadInput(num)} className="h-10 text-base bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl select-none" style={{ fontSize: '1.1rem', WebkitTextSizeAdjust: 'none', MozTextSizeAdjust: 'none', textSizeAdjust: 'none', padding: 0 }}>{num}</Button>
             ))}
-            <Button onClick={() => handleNumberPadInput('')} className="h-10 text-base bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl col-span-1 select-none" style={{ fontSize: '1.1rem', WebkitTextSizeAdjust: 'none', MozTextSizeAdjust: 'none', textSizeAdjust: 'none', padding: 0 }}>C</Button>
-            <Button onClick={handleCancelNumberPad} className="h-10 text-base bg-gray-500 hover:bg-gray-400 text-white font-semibold rounded-xl col-span-2 select-none" style={{ fontSize: '1.1rem', WebkitTextSizeAdjust: 'none', MozTextSizeAdjust: 'none', textSizeAdjust: 'none', padding: 0 }}>취소</Button>
-            <Button onClick={handleSaveScore} className="h-10 text-base bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl col-span-2 select-none" style={{ fontSize: '1.1rem', WebkitTextSizeAdjust: 'none', MozTextSizeAdjust: 'none', textSizeAdjust: 'none', padding: 0 }}>저장</Button>
+            <div className="col-span-5 flex w-full gap-1">
+            <Button 
+              onClick={() => handleNumberPadInput('')} 
+              className="h-10 text-base bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex-1" 
+              style={{ 
+                flex: '1 0 25%',
+                maxWidth: '25%',
+                fontSize: '1.1rem', 
+                WebkitTextSizeAdjust: 'none', 
+                MozTextSizeAdjust: 'none', 
+                textSizeAdjust: 'none', 
+                padding: 0
+              }}
+            >
+              삭제
+            </Button>
+            <Button 
+              onClick={handleCancelNumberPad} 
+              className="h-10 text-base bg-gray-500 hover:bg-gray-400 text-white font-semibold rounded-xl flex-1" 
+              style={{ 
+                flex: '1 0 25%',
+                maxWidth: '25%',
+                fontSize: '1.1rem', 
+                WebkitTextSizeAdjust: 'none', 
+                MozTextSizeAdjust: 'none', 
+                textSizeAdjust: 'none', 
+                padding: 0
+              }}
+            >
+              취소
+            </Button>
+            <Button 
+              onClick={handleSaveScore} 
+              className="h-10 text-base bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl flex-1" 
+              style={{ 
+                flex: '2 0 50%',
+                maxWidth: '50%',
+                fontSize: '1.1rem', 
+                WebkitTextSizeAdjust: 'none', 
+                MozTextSizeAdjust: 'none', 
+                textSizeAdjust: 'none', 
+                padding: 0
+              }}
+            >
+              저장
+            </Button>
+            </div>
           </div>
         </div>
       )}
