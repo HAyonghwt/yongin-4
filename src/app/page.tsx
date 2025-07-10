@@ -27,19 +27,27 @@ const GolfFlagIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// "나"의 라운드 합계 점수 구하기 (플레이어1 기준, 실제 데이터 구조 반영)
-function getMyTotalScore(record: any): number {
-  if (!record.allScores || !record.allScores.length) return 0;
-  // 실제 구조: allScores[0][holeIndex][playerIndex]
-  const holes = record.allScores[0];
+// 단일 코스의 총점 계산 (플레이어1 기준)
+function getCourseTotalScore(courseScores: any[]): number {
+  if (!courseScores || !courseScores.length) return 0;
   let total = 0;
-  for (let i = 0; i < holes.length; i++) {
-    const myScore = holes[i][0]; // 플레이어1(본인) 점수
+  for (let i = 0; i < courseScores.length; i++) {
+    const myScore = courseScores[i][0]; // 플레이어1(본인) 점수
     if (myScore && !isNaN(Number(myScore))) {
       total += Number(myScore);
     }
   }
   return total;
+}
+
+// 레코드의 모든 코스 점수 반환
+function getAllCourseScores(record: any): {score: number, courseName: string}[] {
+  if (!record.allScores || !record.allScores.length) return [];
+  
+  return record.allScores.map((courseScores: any[], index: number) => ({
+    score: getCourseTotalScore(courseScores),
+    courseName: record.playedCourses?.[index]?.name || `코스 ${String.fromCharCode(65 + index)}`
+  }));
 }
 
 export default function HomePage() {
@@ -92,48 +100,123 @@ export default function HomePage() {
       return;
     }
 
-    // 1. 월별 점수 추이 데이터
-    const monthly: { [key: string]: number[] } = {};
-    records.forEach((r: any) => {
-      const d = new Date(r.date);
+    // 1. 월별 점수 추이 데이터 (그 달의 모든 코스 점수 합계 / 코스 수)
+    const monthlyData: { [key: string]: { totalScore: number, courseCount: number } } = {};
+    
+    records.forEach((record: any) => {
+      const d = new Date(record.date);
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const totalScore = getMyTotalScore(r);
-      if (!monthly[ym]) monthly[ym] = [];
-      if (totalScore > 0) monthly[ym].push(totalScore);
+      const courseScores = getAllCourseScores(record);
+      
+      if (!monthlyData[ym]) {
+        monthlyData[ym] = { totalScore: 0, courseCount: 0 };
+      }
+      
+      // 모든 코스의 점수 합산 및 코스 수 카운트
+      courseScores.forEach(course => {
+        if (course.score > 0) {
+          monthlyData[ym].totalScore += course.score;
+          monthlyData[ym].courseCount++;
+        }
+      });
     });
-    const monthlyLabels = Object.keys(monthly).sort();
-    const monthlyAverages = monthlyLabels.map(lab => {
-      const arr = monthly[lab];
-      if (!arr.length) return 0;
-      return parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2));
+    
+    // 월별 평균 계산
+    const monthlyLabels = Object.keys(monthlyData).sort();
+    const monthlyAverages = monthlyLabels.map(month => {
+      const { totalScore, courseCount } = monthlyData[month];
+      return courseCount > 0 ? parseFloat((totalScore / courseCount).toFixed(2)) : 0;
     });
     setMonthlyData({ labels: monthlyLabels, data: monthlyAverages });
 
-    // 2. 구장별 평균 점수 데이터
-    const byCourse: { [key: string]: number[] } = {};
-    records.forEach((r: any) => {
-      const course = r.courseName || "?";
-      const totalScore = getMyTotalScore(r);
-      if (!byCourse[course]) byCourse[course] = [];
-      if (totalScore > 0) byCourse[course].push(totalScore);
+    // 2. 구장별 평균 점수 데이터 (구장별 모든 코스 점수 합계 / 코스 수)
+    const byCourseData: { [key: string]: { totalScore: number, courseCount: number } } = {};
+    
+    records.forEach((record: any) => {
+      const venueName = record.courseName || "기타";
+      const courseScores = getAllCourseScores(record);
+      
+      if (!byCourseData[venueName]) {
+        byCourseData[venueName] = { totalScore: 0, courseCount: 0 };
+      }
+      
+      // 해당 구장의 모든 코스 점수 합산 및 코스 수 카운트
+      courseScores.forEach(course => {
+        if (course.score > 0) {
+          byCourseData[venueName].totalScore += course.score;
+          byCourseData[venueName].courseCount++;
+        }
+      });
     });
-    const byCourseLabels = Object.keys(byCourse);
-    const byCourseAverages = byCourseLabels.map(lab => {
-      const arr = byCourse[lab];
-      if (!arr.length) return 0;
-      return parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(2));
+    
+    // 구장별 평균 계산
+    const byCourseLabels = Object.keys(byCourseData);
+    const byCourseAverages = byCourseLabels.map(venue => {
+      const { totalScore, courseCount } = byCourseData[venue];
+      return courseCount > 0 ? parseFloat((totalScore / courseCount).toFixed(2)) : 0;
     });
     setByCourseData({ labels: byCourseLabels, data: byCourseAverages });
 
-    // 4. 최근 라운드별 점수 데이터 (최근 10개)
+    // 4. 최근 라운드별 점수 데이터 (최근 10개 코스)
+    interface CourseScore {
+      date: Date;
+      courseName: string;
+      score: number;
+      courseLabel: string;
+      timestamp: number;
+      venueName?: string; // 원본 구장 이름 (선택적 속성)
+    }
+    
+    const allCourses: CourseScore[] = [];
+    
+    // 모든 기록을 날짜 역순으로 정렬
     const sortedRecords = [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const recent = sortedRecords.slice(0, 10).reverse();
-    const recentLabels = recent.map(r => {
-      const d = new Date(r.date);
-      return `${d.getMonth() + 1}/${d.getDate()}`;
+    
+    // 각 라운드의 모든 코스 점수를 추출
+    sortedRecords.forEach(record => {
+      const recordDate = new Date(record.date);
+      const dateLabel = `${recordDate.getMonth() + 1}/${recordDate.getDate()}`;
+      
+      // 각 코스별로 점수 계산하여 추가
+      record.allScores.forEach((courseScores: string[][], courseIndex: number) => {
+        if (courseIndex < (record.playedCourses?.length || 0)) {
+          // 구장 이름에서 첫 글자 추출 (예: '화천파크골프장' -> '화')
+          const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
+          // 코스명 추출 (A, B, C...)
+          const courseLetter = String.fromCharCode(65 + courseIndex);
+          const courseLabel = `${venueFirstChar}${courseLetter}`;
+          
+          const totalScore = courseScores.reduce((sum: number, holeScores: string[]) => {
+            const score = parseInt(holeScores[0], 10); // 플레이어 1의 점수
+            return sum + (isNaN(score) ? 0 : score);
+          }, 0);
+          
+          allCourses.push({
+            date: recordDate,
+            courseName: courseLabel,
+            score: totalScore,
+            courseLabel: courseLabel, // 예: '화A', '화B', '강A' 등
+            timestamp: recordDate.getTime(),
+            venueName: record.courseName // 원본 구장 이름 보관 (필요시 사용)
+          });
+        }
+      });
     });
-    const recentScores = recent.map(r => getMyTotalScore(r));
-    setRecentRoundsData({ labels: recentLabels, data: recentScores });
+    
+    // 타임스탬프 기준으로 정렬 (최신순)
+    allCourses.sort((a, b) => b.timestamp - a.timestamp);
+    
+    // 최근 10개 코스 선택
+    const recentCourses = allCourses.slice(0, 10);
+    
+    // 데이터 포맷팅
+    const recentLabels = recentCourses.map(c => c.courseLabel);
+    const recentScores = recentCourses.map(c => c.score);
+    
+    setRecentRoundsData({ 
+      labels: recentLabels, 
+      data: recentScores 
+    });
   }, [isClient]);
 
   const handleDeleteClick = (e: React.MouseEvent, courseId: string) => {

@@ -271,7 +271,7 @@ export default function ClientPlayDetail() {
   const [course, setCourse] = useState<Course | null>(null);
   
   // Game state
-  const [playerNames, setPlayerNames] = useState(DEFAULT_NAMES);
+  const [playerNames, setPlayerNames] = useState<string[]>(DEFAULT_NAMES);
   const [allScores, setAllScores] = useState<string[][][]>([]);
   const [signatures, setSignatures] = useState<(string | null)[][]>([]);
 
@@ -281,6 +281,7 @@ export default function ClientPlayDetail() {
   const [isNumberPadOpen, setIsNumberPadOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ holeIndex: number; playerIndex: number } | null>(null);
   const [tempScore, setTempScore] = useState('');
+  const [isConfirmingNameReset, setIsConfirmingNameReset] = useState(false);
 
   // 코스 전환 시 입력폼 및 진행 상태 완전 초기화
   useEffect(() => {
@@ -698,7 +699,7 @@ useEffect(() => {
     records.unshift(newRecord);
     localStorage.setItem('golfGameRecords', JSON.stringify(records));
 
-    toast({ title: "점수를 보관 했습니다", description: '', duration: 2000 });
+    toast({ title: "점수를 저장하였습니다", description: '', duration: 2000 });
   };
 
 
@@ -921,14 +922,18 @@ useEffect(() => {
       
       <div className="mt-auto pt-4 space-y-2 px-2">
         <div className="flex w-full gap-1">
-          <Button onClick={handleShare} className="h-10 text-sm flex-1 min-w-0 px-1 rounded-[2px] border-none shadow-none" style={{background:'#fee500', color:'#222', fontWeight:'bold', border:'none', boxShadow:'none', borderRadius:'2px', paddingLeft:0, paddingRight:0, fontSize:'0.95rem', minWidth:0}}>
-            점수공유
+          <Button 
+            onClick={() => setIsConfirmingNameReset(true)}
+            className="h-10 text-sm flex-1 min-w-0 px-1 rounded-[2px] border-none shadow-none font-bold" 
+            style={{background:'#4CAF50', color:'white', border:'none', boxShadow:'none', borderRadius:'2px', paddingLeft:0, paddingRight:0, fontSize:'0.95rem', minWidth:0}}
+          >
+            이름초기화
           </Button>
           <Button onClick={() => setIsConfirmingAllReset(true)} className="h-10 text-sm flex-1 min-w-0 px-1 bg-red-500 text-white rounded-[2px] border-none shadow-none hover:bg-red-600" style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}>
             점수초기화
           </Button>
           <Button 
-            onClick={handleSaveRecord}
+            onClick={() => setIsConfirmingSave(true)}
             className="h-10 text-sm flex-1 min-w-0 px-1 bg-blue-500 text-white font-bold rounded-[2px] border-none shadow-none hover:bg-blue-600" 
             style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}
           >
@@ -1027,6 +1032,28 @@ useEffect(() => {
         </div>
       )}
 
+      <AlertDialog open={isConfirmingNameReset} onOpenChange={setIsConfirmingNameReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>이름을 초기화하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              모든 플레이어 이름이 기본값으로 초기화됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setPlayerNames(DEFAULT_NAMES);
+                toast({ title: "이름이 초기화되었습니다.", duration: 2000 });
+              }}
+            >
+              초기화
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={isConfirmingSave} onOpenChange={setIsConfirmingSave}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1034,7 +1061,7 @@ useEffect(() => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSaveRecord}>저장하고 종료</AlertDialogAction>
+            <AlertDialogAction onClick={handleSaveRecord}>저장</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

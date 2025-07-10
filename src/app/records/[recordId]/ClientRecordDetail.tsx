@@ -5,10 +5,21 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, User, Calendar } from 'lucide-react';
+import { ArrowLeft, User, Calendar, Trash2 } from 'lucide-react';
 import type { GameRecord } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { exportScoreTableToImage } from './ClientRecordDetail.exportImage';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const HOLE_COUNT = 9;
 
@@ -19,6 +30,9 @@ export default function ClientRecordDetail() {
 
     const [record, setRecord] = useState<GameRecord | null>(null);
     const [isClient, setIsClient] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         // [Workaround] 페이지 첫 로드 시 발생하는 서버/클라이언트 렌더링 불일치(Hydration)로 인한
@@ -61,6 +75,38 @@ export default function ClientRecordDetail() {
         );
     }
     
+    const handleDeleteRecord = () => {
+        if (!record) return;
+        
+        setIsDeleting(true);
+        try {
+            const savedRecords = localStorage.getItem('golfGameRecords');
+            if (savedRecords) {
+                const records: GameRecord[] = JSON.parse(savedRecords);
+                const updatedRecords = records.filter(r => r.id !== record.id);
+                localStorage.setItem('golfGameRecords', JSON.stringify(updatedRecords));
+                
+                toast({
+                    title: "기록 삭제 완료",
+                    description: "선택한 기록이 삭제되었습니다.",
+                });
+                
+                router.push('/records');
+                router.refresh();
+            }
+        } catch (error) {
+            console.error('기록 삭제 중 오류 발생:', error);
+            toast({
+                title: "오류 발생",
+                description: "기록 삭제 중 오류가 발생했습니다.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsDeleting(false);
+            setIsConfirmingDelete(false);
+        }
+    };
+
     if (!record) {
         return (
             <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background">
@@ -81,7 +127,7 @@ export default function ClientRecordDetail() {
 
     const recordDate = new Date(record.date);
 
-    const courseKey = (record?.courseKey || record?.courseName?.[0] || 'a').toLowerCase();
+    const courseKey = (record?.courseName?.[0] || 'a').toLowerCase();
     return (
         <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background" data-theme={`course-${courseKey}`}>
             <header className="flex items-center justify-between my-6">
@@ -89,7 +135,15 @@ export default function ClientRecordDetail() {
                     <ArrowLeft className="w-6 h-6"/>
                 </Button>
                 <h1 className="text-2xl font-bold text-center truncate">경기 상세 기록</h1>
-                <div className="w-10"></div>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsConfirmingDelete(true)}
+                    className="text-destructive hover:text-destructive/80"
+                    disabled={isDeleting}
+                >
+                    <Trash2 className="w-5 h-5" />
+                </Button>
             </header>
 
             <Card className="mb-6">
@@ -199,6 +253,25 @@ export default function ClientRecordDetail() {
                     );
                 })}
             </main>
+            
+            {/* 삭제 확인 모달 */}
+            <AlertDialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>정말로 이 기록을 삭제하시겠습니까?</AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>취소</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDeleteRecord}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? '삭제 중...' : '삭제'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
-} 
+}
