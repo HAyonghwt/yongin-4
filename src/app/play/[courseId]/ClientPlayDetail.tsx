@@ -681,10 +681,22 @@ useEffect(() => {
     
     const savedRecords = localStorage.getItem('golfGameRecords');
     const records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
+    
+    // 중복 체크: courseId, playerNames, allScores, signatures, playedCourses가 모두 동일하면 중복
+    const isDuplicate = records.some(record =>
+      record.courseId === newRecord.courseId &&
+      JSON.stringify(record.playerNames) === JSON.stringify(newRecord.playerNames) &&
+      JSON.stringify(record.allScores) === JSON.stringify(newRecord.allScores) &&
+      JSON.stringify(record.signatures) === JSON.stringify(newRecord.signatures) &&
+      JSON.stringify(record.playedCourses) === JSON.stringify(newRecord.playedCourses)
+    );
+    if (isDuplicate) {
+      toast({ title: "이미 저장됨", description: "동일한 점수 기록이 이미 저장되어 있습니다.", duration: 2000 });
+      return;
+    }
+
     records.unshift(newRecord);
     localStorage.setItem('golfGameRecords', JSON.stringify(records));
-
-    localStorage.removeItem(`gameState_${courseId}`);
 
     toast({ title: "점수를 보관 했습니다", description: '', duration: 2000 });
   };
@@ -909,44 +921,19 @@ useEffect(() => {
       
       <div className="mt-auto pt-4 space-y-2 px-2">
         <div className="flex w-full gap-1">
-          <Button onClick={() => setIsConfirmingCourseReset(true)} className="h-10 text-sm flex-1 min-w-0 px-1 bg-[#22c55e] text-white rounded-[2px] border-none shadow-none hover:bg-[#16a34a]" style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}>
-            코스삭제
+          <Button onClick={handleShare} className="h-10 text-sm flex-1 min-w-0 px-1 rounded-[2px] border-none shadow-none" style={{background:'#fee500', color:'#222', fontWeight:'bold', border:'none', boxShadow:'none', borderRadius:'2px', paddingLeft:0, paddingRight:0, fontSize:'0.95rem', minWidth:0}}>
+            점수공유
           </Button>
           <Button onClick={() => setIsConfirmingAllReset(true)} className="h-10 text-sm flex-1 min-w-0 px-1 bg-red-500 text-white rounded-[2px] border-none shadow-none hover:bg-red-600" style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}>
-            전체삭제
+            점수초기화
           </Button>
           <Button 
-            onClick={() => setIsConfirmingSaveAndDelete(true)}
+            onClick={handleSaveRecord}
             className="h-10 text-sm flex-1 min-w-0 px-1 bg-blue-500 text-white font-bold rounded-[2px] border-none shadow-none hover:bg-blue-600" 
             style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}
           >
-            저장후삭제
+            기록저장
           </Button>
-          
-          {/* 저장 후 삭제 확인 다이얼로그 */}
-          <AlertDialog open={isConfirmingSaveAndDelete} onOpenChange={setIsConfirmingSaveAndDelete}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>저장 후 삭제</AlertDialogTitle>
-                <AlertDialogDescription>
-                  점수를 저장한 후 삭제하시겠습니까?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={async () => {
-                    await handleSaveRecord();
-                    handleResetCourse();
-                    setIsConfirmingSaveAndDelete(false);
-                  }}
-                  className="bg-blue-500 hover:bg-blue-600"
-                >
-                  확인
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
       </div>
       
@@ -1071,16 +1058,14 @@ useEffect(() => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>모든 코스를 초기화하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>
-              이 경기의 모든 점수와 서명이 영구적으로 삭제됩니다.
-            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetAll}>전체 초기화</AlertDialogAction>
+            <AlertDialogAction className="bg-red-500 hover:bg-red-600" onClick={handleResetAll}>
+              전체 초기화
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
-}
