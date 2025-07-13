@@ -516,6 +516,22 @@ useEffect(() => {
     let updated = false;
     const newStep = [...playerCurrentStep];
     for (let playerIdx = 0; playerIdx < 4; playerIdx++) {
+      // [임시 수정] 입력 순서가 시작되지 않은 플레이어는 이번에 입력된 셀의 holeIndex로 playerStartHole을 세팅
+      if (playerStartHole[playerIdx] === null) {
+        // 현재 입력된 셀 찾기
+        const inputHoleIdx = scores.findIndex(row => row[playerIdx] && row[playerIdx].trim() !== '');
+        if (inputHoleIdx !== -1) {
+          const newStartHole = [...playerStartHole];
+          newStartHole[playerIdx] = inputHoleIdx;
+          setPlayerStartHole(newStartHole);
+          const newOrder = [...playerInputOrder];
+          newOrder[playerIdx] = makePlayerInputOrder(inputHoleIdx, playerIdx);
+          setPlayerInputOrder(newOrder);
+          const newStep = [...playerCurrentStep];
+          newStep[playerIdx] = 0;
+          setPlayerCurrentStep(newStep);
+        }
+      }
       // 입력 순서가 시작된 플레이어만
       if (playerStartHole[playerIdx] !== null && playerInputOrder[playerIdx].length > 0) {
         const order = playerInputOrder[playerIdx];
@@ -669,36 +685,38 @@ useEffect(() => {
         return;
     }
 
-    const newRecord: GameRecord = {
-        id: Date.now().toString(),
+    // 이미 저장된 코스 정보 불러오기
+    const savedRecords = localStorage.getItem('golfGameRecords');
+    let records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
+
+    // 이미 저장된 playedCourses의 이름 목록(flat)
+    const savedCourseNames = records
+      .filter(record => record.courseId === course.id && JSON.stringify(record.playerNames) === JSON.stringify(playerNames))
+      .flatMap(record => record.playedCourses.map((c: any) => c.name));
+
+    // 이번에 저장할 코스 중, 아직 저장되지 않은 코스만 추림
+    const newIndices = playedIndices.filter(idx => !savedCourseNames.includes(course.courses[idx].name));
+    if (newIndices.length === 0) {
+      setIsConfirmingSave(false); // 안내 모달 닫기
+      toast({ title: "저장할 새로운 기록 없음", description: "이미 저장된 코스는 제외되었습니다.", duration: 2000 });
+      return;
+    }
+
+    // 코스별로 개별 기록으로 저장
+    newIndices.forEach(idx => {
+      const newRecord: GameRecord = {
+        id: Date.now().toString() + '-' + idx,
         date: new Date().toISOString(),
         courseId: course.id,
         courseName: course.name,
         playerNames: playerNames,
-        allScores: playedIndices.map(i => allScores[i]),
-        signatures: playedIndices.map(i => signatures[i] || []),
-        playedCourses: playedIndices.map(i => course.courses[i]),
-    };
-    
-    const savedRecords = localStorage.getItem('golfGameRecords');
-    const records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
-    
-    // 중복 체크: courseId, playerNames, allScores, signatures, playedCourses가 모두 동일하면 중복
-    const isDuplicate = records.some(record =>
-      record.courseId === newRecord.courseId &&
-      JSON.stringify(record.playerNames) === JSON.stringify(newRecord.playerNames) &&
-      JSON.stringify(record.allScores) === JSON.stringify(newRecord.allScores) &&
-      JSON.stringify(record.signatures) === JSON.stringify(newRecord.signatures) &&
-      JSON.stringify(record.playedCourses) === JSON.stringify(newRecord.playedCourses)
-    );
-    if (isDuplicate) {
-      toast({ title: "이미 저장됨", description: "동일한 점수 기록이 이미 저장되어 있습니다.", duration: 2000 });
-      return;
-    }
-
-    records.unshift(newRecord);
+        allScores: [allScores[idx]],
+        signatures: [signatures[idx] || []],
+        playedCourses: [course.courses[idx]],
+      };
+      records.unshift(newRecord);
+    });
     localStorage.setItem('golfGameRecords', JSON.stringify(records));
-
     toast({ title: "점수를 저장하였습니다", description: '', duration: 2000 });
   };
 
@@ -731,6 +749,28 @@ useEffect(() => {
       return newRow;
     });
     handleScoreChange(newScoresForCourse);
+  };
+
+  const handleSaveButtonClick = () => {
+    if (!course) return;
+    const playedIndices = course.courses
+      .map((_, index) => index)
+      .filter(index => allScores[index]?.flat().some(s => s.trim() !== ''));
+    if (playedIndices.length === 0) {
+      toast({ title: "저장할 기록 없음", description: "점수를 먼저 입력해주세요.", variant: 'destructive', duration: 2000 });
+      return;
+    }
+    const savedRecords = localStorage.getItem('golfGameRecords');
+    let records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
+    const savedCourseNames = records
+      .filter(record => record.courseId === course.id && JSON.stringify(record.playerNames) === JSON.stringify(playerNames))
+      .flatMap(record => record.playedCourses.map((c: any) => c.name));
+    const newIndices = playedIndices.filter(idx => !savedCourseNames.includes(course.courses[idx].name));
+    if (newIndices.length === 0) {
+      toast({ title: "저장할 새로운 기록 없음", description: "이미 저장된 코스는 제외되었습니다.", duration: 2000 });
+      return;
+    }
+    setIsConfirmingSave(true);
   };
 
   if (!isClient || !course) {
@@ -933,12 +973,12 @@ useEffect(() => {
             점수초기화
           </Button>
           <Button 
-            onClick={() => setIsConfirmingSave(true)}
-            className="h-10 text-sm flex-1 min-w-0 px-1 bg-blue-500 text-white font-bold rounded-[2px] border-none shadow-none hover:bg-blue-600" 
-            style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}
-          >
-            기록저장
-          </Button>
+             onClick={handleSaveButtonClick}
+             className="h-10 text-sm flex-1 min-w-0 px-1 bg-blue-500 text-white font-bold rounded-[2px] border-none shadow-none hover:bg-blue-600" 
+             style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}
+           >
+             기록보관
+           </Button>
         </div>
       </div>
       

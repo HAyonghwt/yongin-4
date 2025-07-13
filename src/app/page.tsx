@@ -178,29 +178,46 @@ export default function HomePage() {
       const dateLabel = `${recordDate.getMonth() + 1}/${recordDate.getDate()}`;
       
       // 각 코스별로 점수 계산하여 추가
-      record.allScores.forEach((courseScores: string[][], courseIndex: number) => {
-        if (courseIndex < (record.playedCourses?.length || 0)) {
-          // 구장 이름에서 첫 글자 추출 (예: '화천파크골프장' -> '화')
-          const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
-          // 코스명 추출 (A, B, C...)
-          const courseLetter = String.fromCharCode(65 + courseIndex);
-          const courseLabel = `${venueFirstChar}${courseLetter}`;
-          
-          const totalScore = courseScores.reduce((sum: number, holeScores: string[]) => {
-            const score = parseInt(holeScores[0], 10); // 플레이어 1의 점수
-            return sum + (isNaN(score) ? 0 : score);
-          }, 0);
-          
-          allCourses.push({
-            date: recordDate,
-            courseName: courseLabel,
-            score: totalScore,
-            courseLabel: courseLabel, // 예: '화A', '화B', '강A' 등
-            timestamp: recordDate.getTime(),
-            venueName: record.courseName // 원본 구장 이름 보관 (필요시 사용)
-          });
-        }
+      // 한 기록에 여러 코스가 아닌, 한 코스만 저장된 구조에 맞게 라벨 생성
+if (record.playedCourses && record.playedCourses.length > 0 && record.allScores && record.allScores.length > 0) {
+  const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
+  const courseName = record.playedCourses[0]?.name || 'A';
+  const courseLabel = `${venueFirstChar}${courseName}`;
+  const totalScore = record.allScores[0].reduce((sum: number, holeScores: string[]) => {
+    const score = parseInt(holeScores[0], 10);
+    return sum + (isNaN(score) ? 0 : score);
+  }, 0);
+  allCourses.push({
+    date: recordDate,
+    courseName: courseLabel,
+    score: totalScore,
+    courseLabel: courseLabel, // 예: '화A', '화B', ...
+    timestamp: recordDate.getTime(),
+    venueName: record.courseName
+  });
+}
+// (이전 구조 호환: 여러 코스가 한 레코드에 있을 경우)
+else if (record.allScores && record.allScores.length > 1) {
+  record.allScores.forEach((courseScores: string[][], courseIndex: number) => {
+    if (courseIndex < (record.playedCourses?.length || 0)) {
+      const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
+      const courseName = record.playedCourses[courseIndex]?.name || String.fromCharCode(65 + courseIndex);
+      const courseLabel = `${venueFirstChar}${courseName}`;
+      const totalScore = courseScores.reduce((sum: number, holeScores: string[]) => {
+        const score = parseInt(holeScores[0], 10);
+        return sum + (isNaN(score) ? 0 : score);
+      }, 0);
+      allCourses.push({
+        date: recordDate,
+        courseName: courseLabel,
+        score: totalScore,
+        courseLabel: courseLabel,
+        timestamp: recordDate.getTime(),
+        venueName: record.courseName
       });
+    }
+  });
+}
     });
     
     // 타임스탬프 기준으로 정렬 (최신순)

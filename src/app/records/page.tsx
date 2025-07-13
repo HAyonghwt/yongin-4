@@ -312,7 +312,11 @@ export default function RecordsPage() {
     const m = d.getMinutes().toString().padStart(2, '0');
     label += ` (${h}:${m})`;
   }
-  return <span className="truncate">{label}</span>;
+  // 코스명 추가 (A코스/B코스 등)
+  if (record.playedCourses && record.playedCourses[0]?.name) {
+    label += ` ${record.playedCourses[0].name}코스`;
+  }
+  return <span className="truncate" style={{maxWidth:'80vw', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', display:'inline-block', verticalAlign:'middle'}}>{label}</span>;
 })() }
                                 <span className="flex items-center ml-2 graph-bar-area">
   <span className="text-base font-bold mr-2" style={{ whiteSpace: "nowrap" }}>{avg > 0 ? avg : '-'}</span>
