@@ -1,5 +1,7 @@
 
 const withPWA = require('next-pwa')({
+  // output: 'export' 옵션을 위해 nextConfig 객체 분리
+
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -45,6 +47,7 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig = {
+  output: 'export', // 정적 내보내기 활성화
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: true,
@@ -62,7 +65,8 @@ const nextConfig = {
       },
     ],
   },
-  // output: 'export',
 };
 
-module.exports = withPWA(nextConfig);
+module.exports = withPWA({
+  ...nextConfig,
+});

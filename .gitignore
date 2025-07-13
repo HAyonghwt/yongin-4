@@ -43,3 +43,21 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# Next.js 정적 export 결과
+/out
+
+# 안드로이드 빌드 결과
+/android/app/build
+/android/app/src/main/assets/public
+/android/app/src/main/assets/capacitor.config.json
+
+# aab 파일
+/android/app/build/outputs/bundle/release/*.aab
+
+# 키스토어 파일(예시)
+/*.jks
+/android/app/*.jks
+
+# 기타
+.DS_Store
