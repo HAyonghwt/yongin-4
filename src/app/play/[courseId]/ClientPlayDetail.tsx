@@ -555,8 +555,13 @@ useEffect(() => {
     }
     if (updated) {
       setPlayerCurrentStep(newStep);
+      if (isEditing) {
+        toast({ title: '수정 완료', description: '점수가 정상적으로 수정되었습니다.', duration: 1200 });
+      }
     } else {
-      toast({ title: '입력 없음', description: '이번 차례에 입력된 점수가 없습니다.', duration: 2000 });
+      if (!isEditing) {
+        toast({ title: '입력 없음', description: '이번 차례에 입력된 점수가 없습니다.', duration: 2000 });
+      }
     }
   };
 
@@ -689,13 +694,19 @@ useEffect(() => {
     const savedRecords = localStorage.getItem('golfGameRecords');
     let records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
 
-    // 이미 저장된 playedCourses의 이름 목록(flat)
-    const savedCourseNames = records
-      .filter(record => record.courseId === course.id && JSON.stringify(record.playerNames) === JSON.stringify(playerNames))
-      .flatMap(record => record.playedCourses.map((c: any) => c.name));
-
-    // 이번에 저장할 코스 중, 아직 저장되지 않은 코스만 추림
-    const newIndices = playedIndices.filter(idx => !savedCourseNames.includes(course.courses[idx].name));
+    // 점수까지 모두 비교하여 완전히 동일한 기록만 중복으로 간주
+    const newIndices = playedIndices.filter(idx => {
+      const thisCourseName = course.courses[idx].name;
+      const thisScore = JSON.stringify(allScores[idx]);
+      // 같은 courseId, 같은 playerNames, 같은 코스명, 그리고 점수까지 모두 같은 기록이 이미 있는지 확인
+      const isDuplicate = records.some(record =>
+        record.courseId === course.id &&
+        JSON.stringify(record.playerNames) === JSON.stringify(playerNames) &&
+        record.playedCourses[0]?.name === thisCourseName &&
+        JSON.stringify(record.allScores[0]) === thisScore
+      );
+      return !isDuplicate;
+    });
     if (newIndices.length === 0) {
       setIsConfirmingSave(false); // 안내 모달 닫기
       toast({ title: "저장할 새로운 기록 없음", description: "이미 저장된 코스는 제외되었습니다.", duration: 2000 });
@@ -762,10 +773,18 @@ useEffect(() => {
     }
     const savedRecords = localStorage.getItem('golfGameRecords');
     let records: GameRecord[] = savedRecords ? JSON.parse(savedRecords) : [];
-    const savedCourseNames = records
-      .filter(record => record.courseId === course.id && JSON.stringify(record.playerNames) === JSON.stringify(playerNames))
-      .flatMap(record => record.playedCourses.map((c: any) => c.name));
-    const newIndices = playedIndices.filter(idx => !savedCourseNames.includes(course.courses[idx].name));
+    // 점수까지 모두 비교하여 완전히 동일한 기록만 중복으로 간주
+    const newIndices = playedIndices.filter(idx => {
+      const thisCourseName = course.courses[idx].name;
+      const thisScore = JSON.stringify(allScores[idx]);
+      const isDuplicate = records.some(record =>
+        record.courseId === course.id &&
+        JSON.stringify(record.playerNames) === JSON.stringify(playerNames) &&
+        record.playedCourses[0]?.name === thisCourseName &&
+        JSON.stringify(record.allScores[0]) === thisScore
+      );
+      return !isDuplicate;
+    });
     if (newIndices.length === 0) {
       toast({ title: "저장할 새로운 기록 없음", description: "이미 저장된 코스는 제외되었습니다.", duration: 2000 });
       return;
@@ -985,7 +1004,7 @@ useEffect(() => {
       {isNumberPadOpen && selectedCell && (
         <div
           className={cn(
-            'fixed left-0 right-0 z-50 p-1 bg-[#212529] transition-transform duration-300 flex flex-col items-center',
+            'fixed left-0 right-0 z-[9999] p-1 bg-[#212529] transition-transform duration-300 flex flex-col items-center',
             {
               'bottom-0 rounded-t-2xl': selectedCell.holeIndex < 7,
               'top-0 rounded-b-2xl': selectedCell.holeIndex >= 7,
