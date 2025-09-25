@@ -13,6 +13,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 const COURSE_NAMES = ['A', 'B', 'C', 'D', 'E', 'F'];
 
+// 구장 추가 제한 설정 (메인 페이지와 동일하게 설정)
+const MAX_ADDITIONAL_COURSES = 3; // 기본 구장(아르피아, 포곡) 제외하고 추가 가능한 구장 수
+
 export default function AddCoursePage() {
   const router = useRouter();
   const [courseName, setCourseName] = useState('');
@@ -61,6 +64,14 @@ export default function AddCoursePage() {
   const handleSave = () => {
     if (!courseName.trim()) {
       setError('구장 이름을 입력해주세요.');
+      return;
+    }
+
+    // 구장 추가 제한 체크
+    const existingCoursesData = localStorage.getItem('golfCoursesList');
+    const existingCourses: Course[] = existingCoursesData ? JSON.parse(existingCoursesData) : [];
+    if (existingCourses.length >= (2 + MAX_ADDITIONAL_COURSES)) {
+      setError(`최대 ${MAX_ADDITIONAL_COURSES}개의 구장만 추가할 수 있습니다.`);
       return;
     }
 

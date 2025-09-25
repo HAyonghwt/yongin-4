@@ -307,6 +307,10 @@ export default function ClientPlayDetail() {
   const [isConfirmingSaveAndDelete, setIsConfirmingSaveAndDelete] = useState(false);
   const [isConfirmingCourseReset, setIsConfirmingCourseReset] = useState(false);
   const [isConfirmingAllReset, setIsConfirmingAllReset] = useState(false);
+  
+  // PAR 편집을 위한 상태
+  const [editingPar, setEditingPar] = useState<{ courseIndex: number; holeIndex: number } | null>(null);
+  const [tempPar, setTempPar] = useState('');
 
   // [플레이어별 시작홀/진행상태 state 배열로 관리]
 const [playerStartHole, setPlayerStartHole] = useState<(number|null)[]>([null, null, null, null]); // 각 플레이어별 시작홀
@@ -739,6 +743,58 @@ useEffect(() => {
   const finishDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => { e.preventDefault(); if (!contextRef.current) return; contextRef.current.closePath(); setIsDrawing(false); };
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => { e.preventDefault(); if (!isDrawing || !contextRef.current) return; const { offsetX, offsetY } = getCoords(e); contextRef.current.lineTo(offsetX, offsetY); contextRef.current.stroke(); };
 
+  // PAR 편집 함수들
+  const handleParDoubleClick = (courseIndex: number, holeIndex: number) => {
+    if (!course) return;
+    setEditingPar({ courseIndex, holeIndex });
+    setTempPar(String(course.courses[courseIndex].pars[holeIndex]));
+  };
+
+  const handleParChange = (value: string) => {
+    if (!/^\d*$/.test(value) || parseInt(value) > 9 || parseInt(value) < 1) return;
+    setTempPar(value);
+  };
+
+  const handleParSave = () => {
+    if (!editingPar || !course || !tempPar) return;
+    
+    const newPar = parseInt(tempPar);
+    if (isNaN(newPar) || newPar < 1 || newPar > 9) return;
+
+    const updatedCourse = {
+      ...course,
+      courses: course.courses.map((subCourse, idx) => 
+        idx === editingPar.courseIndex 
+          ? {
+              ...subCourse,
+              pars: subCourse.pars.map((par, holeIdx) => 
+                holeIdx === editingPar.holeIndex ? newPar : par
+              )
+            }
+          : subCourse
+      )
+    };
+
+    // localStorage에 업데이트된 코스 정보 저장
+    const savedCourses = localStorage.getItem('golfCoursesList');
+    if (savedCourses) {
+      const courses = JSON.parse(savedCourses);
+      const updatedCourses = courses.map((c: Course) => 
+        c.id === course.id ? updatedCourse : c
+      );
+      localStorage.setItem('golfCoursesList', JSON.stringify(updatedCourses));
+    }
+
+    setCourse(updatedCourse);
+    setEditingPar(null);
+    setTempPar('');
+  };
+
+  const handleParCancel = () => {
+    setEditingPar(null);
+    setTempPar('');
+  };
+
   // 숫자패드 입력 함수: 수정 모드에서는 덮어쓰기, 입력 모드에서는 append
   const handleNumberPadInput = (value: string) => {
     if (!selectedCell) return;
@@ -819,22 +875,7 @@ useEffect(() => {
         <header className="flex items-center p-2 mb-2">
             <Button variant="ghost" size="icon" onClick={() => router.push('/')}> <ArrowLeft /> </Button>
             <h1 className="text-xl font-bold mx-auto">{course.name}</h1>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleShare}
-                aria-label="공유하기"
-                className="p-1"
-              >
-                <img 
-                  src="/images/share-icon.png" 
-                  alt="공유하기" 
-                  className="h-6 w-6 object-contain"
-                />
-              </Button>
-
-            </div>
+            <div className="w-10"></div>
         </header>
 
       {course.courses.length > 4 ? (
@@ -900,7 +941,39 @@ useEffect(() => {
                       return (
                         <TableRow key={holeIndex} className="border-b-0">
                           <TableCell className="hole-cell">{holeIndex + 1}</TableCell>
-                          <TableCell className="par-cell text-center text-xl p-0 font-normal">{subCourse.pars[holeIndex]}</TableCell>
+                          <TableCell className="par-cell text-center text-xl p-0 font-normal">
+                            {editingPar?.courseIndex === courseIdx && editingPar?.holeIndex === holeIndex ? (
+                              <div className="flex items-center justify-start gap-3">
+                                <Input
+                                  type="tel"
+                                  inputMode="numeric"
+                                  pattern="[1-9]"
+                                  value={tempPar}
+                                  onChange={(e) => handleParChange(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleParSave();
+                                    if (e.key === 'Escape') handleParCancel();
+                                  }}
+                                  onFocus={(e) => e.target.select()}
+                                  className="w-8 h-8 text-center text-xl font-bold p-0 border-2 border-primary"
+                                  maxLength={1}
+                                  autoFocus
+                                />
+                                <div className="flex gap-1">
+                                  <Button size="sm" onClick={handleParSave} className="h-8 w-8 p-0 text-lg font-bold bg-green-500 hover:bg-green-600 rounded-lg" style={{height: '32px', width: '32px', minHeight: '32px', minWidth: '32px'}}>✓</Button>
+                                  <Button size="sm" onClick={handleParCancel} className="h-8 w-8 p-0 text-lg font-bold bg-red-500 hover:bg-red-600 rounded-lg" style={{height: '32px', width: '32px', minHeight: '32px', minWidth: '32px'}}>✗</Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <span
+                                onDoubleClick={() => handleParDoubleClick(courseIdx, holeIndex)}
+                                className="cursor-pointer hover:bg-gray-200 rounded px-1 py-0.5 transition-colors"
+                                title="더블클릭하여 PAR 수정"
+                              >
+                                {subCourse.pars[holeIndex]}
+                              </span>
+                            )}
+                          </TableCell>
                           {Array.from({ length: 4 }).map((_, playerIndex) => {
                             const score = currentScores[holeIndex]?.[playerIndex];
                             const par = subCourse.pars[holeIndex];
@@ -992,11 +1065,11 @@ useEffect(() => {
             점수초기화
           </Button>
           <Button 
-             onClick={handleSaveButtonClick}
-             className="h-10 text-sm flex-1 min-w-0 px-1 bg-blue-500 text-white font-bold rounded-[2px] border-none shadow-none hover:bg-blue-600" 
+             onClick={handleShare}
+             className="h-10 text-sm flex-1 min-w-0 px-1 bg-[#FEE500] text-black font-bold rounded-[2px] border-none shadow-none hover:bg-[#FDD835]" 
              style={{paddingLeft: 0, paddingRight: 0, fontSize: '0.95rem', minWidth: 0}}
            >
-             기록보관
+             공유하기
            </Button>
         </div>
       </div>

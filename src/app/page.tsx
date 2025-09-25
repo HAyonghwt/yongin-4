@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { PlusCircle, History, Trash2, Edit, Pencil } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Pencil } from 'lucide-react';
 import type { Course } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import LineBarCharts from "@/app/components/LineBarCharts";
 
 const GolfFlagIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -27,28 +26,9 @@ const GolfFlagIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// 단일 코스의 총점 계산 (플레이어1 기준)
-function getCourseTotalScore(courseScores: any[]): number {
-  if (!courseScores || !courseScores.length) return 0;
-  let total = 0;
-  for (let i = 0; i < courseScores.length; i++) {
-    const myScore = courseScores[i][0]; // 플레이어1(본인) 점수
-    if (myScore && !isNaN(Number(myScore))) {
-      total += Number(myScore);
-    }
-  }
-  return total;
-}
 
-// 레코드의 모든 코스 점수 반환
-function getAllCourseScores(record: any): {score: number, courseName: string}[] {
-  if (!record.allScores || !record.allScores.length) return [];
-  
-  return record.allScores.map((courseScores: any[], index: number) => ({
-    score: getCourseTotalScore(courseScores),
-    courseName: record.playedCourses?.[index]?.name || `코스 ${String.fromCharCode(65 + index)}`
-  }));
-}
+// 구장 추가 제한 설정 (나중에 쉽게 변경 가능)
+const MAX_ADDITIONAL_COURSES = 3; // 기본 구장(아르피아, 포곡) 제외하고 추가 가능한 구장 수
 
 export default function HomePage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -57,10 +37,6 @@ export default function HomePage() {
   const [userName, setUserName] = useState('나');
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false);
   const [tempUserName, setTempUserName] = useState('');
-  // New chart data states for LineBarCharts
-  const [monthlyData, setMonthlyData] = useState<{ labels: string[]; data: number[] }>({ labels: [], data: [] });
-  const [byCourseData, setByCourseData] = useState<{ labels: string[]; data: number[] }>({ labels: [], data: [] });
-  const [recentRoundsData, setRecentRoundsData] = useState<{ labels: string[]; data: number[] }>({ labels: [], data: [] });
   const router = useRouter();
 
   const MAX_COURSES_VISIBLE = 3;
@@ -70,6 +46,55 @@ export default function HomePage() {
     const savedCourses = localStorage.getItem('golfCoursesList');
     if (savedCourses) {
       setCourses(JSON.parse(savedCourses));
+    } else {
+      // 기본 구장 2개 미리 등록
+      const defaultCourses: Course[] = [
+        {
+          id: 'arupia-course',
+          name: '아르피아구장',
+          courses: [
+            {
+              name: '1차',
+              pars: [4, 3, 3, 4, 3, 5, 4, 4, 3]
+            },
+            {
+              name: '2차',
+              pars: [4, 3, 3, 4, 3, 5, 4, 4, 3]
+            },
+            {
+              name: '3차',
+              pars: [4, 3, 3, 4, 3, 5, 4, 4, 3]
+            },
+            {
+              name: '4차',
+              pars: [4, 3, 3, 4, 3, 5, 4, 4, 3]
+            }
+          ]
+        },
+        {
+          id: 'pogok-course',
+          name: '포곡구장',
+          courses: [
+            {
+              name: '1차',
+              pars: [3, 4, 4, 4, 4, 3, 5, 3, 3]
+            },
+            {
+              name: '2차',
+              pars: [3, 4, 4, 4, 4, 3, 5, 3, 3]
+            },
+            {
+              name: '3차',
+              pars: [3, 4, 4, 4, 4, 3, 5, 3, 3]
+            },
+            {
+              name: '4차',
+              pars: [3, 4, 4, 4, 4, 3, 5, 3, 3]
+            }
+          ]
+        }
+      ];
+      setCourses(defaultCourses);
     }
     const savedName = localStorage.getItem('parkGolfUserName');
     if (savedName) {
@@ -88,153 +113,6 @@ export default function HomePage() {
     }
   }, [courses, userName, isClient]);
 
-  useEffect(() => {
-    if (!isClient) return;
-    // 기록 불러오기
-    const recordsRaw = localStorage.getItem('golfGameRecords');
-    if (!recordsRaw) return;
-    let records: any[] = [];
-    try {
-      records = JSON.parse(recordsRaw);
-    } catch {
-      return;
-    }
-
-    // 1. 월별 점수 추이 데이터 (그 달의 모든 코스 점수 합계 / 코스 수)
-    const monthlyData: { [key: string]: { totalScore: number, courseCount: number } } = {};
-    
-    records.forEach((record: any) => {
-      const d = new Date(record.date);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const courseScores = getAllCourseScores(record);
-      
-      if (!monthlyData[ym]) {
-        monthlyData[ym] = { totalScore: 0, courseCount: 0 };
-      }
-      
-      // 모든 코스의 점수 합산 및 코스 수 카운트
-      courseScores.forEach(course => {
-        if (course.score > 0) {
-          monthlyData[ym].totalScore += course.score;
-          monthlyData[ym].courseCount++;
-        }
-      });
-    });
-    
-    // 월별 평균 계산
-    const monthlyLabels = Object.keys(monthlyData).sort();
-    const monthlyAverages = monthlyLabels.map(month => {
-      const { totalScore, courseCount } = monthlyData[month];
-      return courseCount > 0 ? parseFloat((totalScore / courseCount).toFixed(2)) : 0;
-    });
-    setMonthlyData({ labels: monthlyLabels, data: monthlyAverages });
-
-    // 2. 구장별 평균 점수 데이터 (구장별 모든 코스 점수 합계 / 코스 수)
-    const byCourseData: { [key: string]: { totalScore: number, courseCount: number } } = {};
-    
-    records.forEach((record: any) => {
-      const venueName = record.courseName || "기타";
-      const courseScores = getAllCourseScores(record);
-      
-      if (!byCourseData[venueName]) {
-        byCourseData[venueName] = { totalScore: 0, courseCount: 0 };
-      }
-      
-      // 해당 구장의 모든 코스 점수 합산 및 코스 수 카운트
-      courseScores.forEach(course => {
-        if (course.score > 0) {
-          byCourseData[venueName].totalScore += course.score;
-          byCourseData[venueName].courseCount++;
-        }
-      });
-    });
-    
-    // 구장별 평균 계산
-    const byCourseLabels = Object.keys(byCourseData);
-    const byCourseAverages = byCourseLabels.map(venue => {
-      const { totalScore, courseCount } = byCourseData[venue];
-      return courseCount > 0 ? parseFloat((totalScore / courseCount).toFixed(2)) : 0;
-    });
-    setByCourseData({ labels: byCourseLabels, data: byCourseAverages });
-
-    // 4. 최근 라운드별 점수 데이터 (최근 10개 코스)
-    interface CourseScore {
-      date: Date;
-      courseName: string;
-      score: number;
-      courseLabel: string;
-      timestamp: number;
-      venueName?: string; // 원본 구장 이름 (선택적 속성)
-    }
-    
-    const allCourses: CourseScore[] = [];
-    
-    // 모든 기록을 날짜 역순으로 정렬
-    const sortedRecords = [...records].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    // 각 라운드의 모든 코스 점수를 추출
-    sortedRecords.forEach(record => {
-      const recordDate = new Date(record.date);
-      const dateLabel = `${recordDate.getMonth() + 1}/${recordDate.getDate()}`;
-      
-      // 각 코스별로 점수 계산하여 추가
-      // 한 기록에 여러 코스가 아닌, 한 코스만 저장된 구조에 맞게 라벨 생성
-if (record.playedCourses && record.playedCourses.length > 0 && record.allScores && record.allScores.length > 0) {
-  const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
-  const courseName = record.playedCourses[0]?.name || 'A';
-  const courseLabel = `${venueFirstChar}${courseName}`;
-  const totalScore = record.allScores[0].reduce((sum: number, holeScores: string[]) => {
-    const score = parseInt(holeScores[0], 10);
-    return sum + (isNaN(score) ? 0 : score);
-  }, 0);
-  allCourses.push({
-    date: recordDate,
-    courseName: courseLabel,
-    score: totalScore,
-    courseLabel: courseLabel, // 예: '화A', '화B', ...
-    timestamp: recordDate.getTime(),
-    venueName: record.courseName
-  });
-}
-// (이전 구조 호환: 여러 코스가 한 레코드에 있을 경우)
-else if (record.allScores && record.allScores.length > 1) {
-  record.allScores.forEach((courseScores: string[][], courseIndex: number) => {
-    if (courseIndex < (record.playedCourses?.length || 0)) {
-      const venueFirstChar = record.courseName ? record.courseName.charAt(0) : '기';
-      const courseName = record.playedCourses[courseIndex]?.name || String.fromCharCode(65 + courseIndex);
-      const courseLabel = `${venueFirstChar}${courseName}`;
-      const totalScore = courseScores.reduce((sum: number, holeScores: string[]) => {
-        const score = parseInt(holeScores[0], 10);
-        return sum + (isNaN(score) ? 0 : score);
-      }, 0);
-      allCourses.push({
-        date: recordDate,
-        courseName: courseLabel,
-        score: totalScore,
-        courseLabel: courseLabel,
-        timestamp: recordDate.getTime(),
-        venueName: record.courseName
-      });
-    }
-  });
-}
-    });
-    
-    // 타임스탬프 기준으로 정렬 (최신순)
-    allCourses.sort((a, b) => b.timestamp - a.timestamp);
-    
-    // 최근 10개 코스 선택
-    const recentCourses = allCourses.slice(0, 10);
-    
-    // 데이터 포맷팅
-    const recentLabels = recentCourses.map(c => c.courseLabel);
-    const recentScores = recentCourses.map(c => c.score);
-    
-    setRecentRoundsData({ 
-      labels: recentLabels, 
-      data: recentScores 
-    });
-  }, [isClient]);
 
   const handleDeleteClick = (e: React.MouseEvent, courseId: string) => {
     e.stopPropagation();
@@ -326,7 +204,7 @@ const handleEditDialogSave = () => {
     <div className="container mx-auto p-4 max-w-lg min-h-screen bg-background">
       <header className="text-center my-8">
         <div className="flex items-center justify-center gap-1.5">
-          <GolfFlagIcon className="w-8 h-8" />
+          <img src="/logo.png" alt="로고" className="w-8 h-8" />
           <h1 className="text-2xl font-bold whitespace-nowrap select-none cursor-default">
             {userName}의 파크골프
           </h1>
@@ -363,12 +241,12 @@ const handleEditDialogSave = () => {
           </Dialog>
         </div>
         <div className="mt-2 text-base text-gray-500 font-normal">
-          구장을 등록하고 스코어를 관리하세요
+          용인특례시 파크골프협회
         </div>
       </header>
 
       <main className="space-y-4">
-        <h2 className="text-xl font-bold">내 구장 목록</h2>
+        <h2 className="text-xl font-bold">구장 목록</h2>
         {courses.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
             {courses.slice(0, 3).map(course => (
@@ -382,14 +260,16 @@ const handleEditDialogSave = () => {
                     <CardTitle className="text-lg font-semibold truncate stadium-name select-none cursor-pointer">{course.name}</CardTitle>
                     <CardDescription className="truncate text-base">{course.courses.length}개 코스 ({course.courses.map(c => c.name).join(', ')}코스)</CardDescription>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={(e) => handleEditCourse(e, course.id)} className="w-8 h-8">
-                      <Edit className="w-5 h-5 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={(e) => handleDeleteClick(e, course.id)} className="w-8 h-8">
-                      <Trash2 className="w-5 h-5 text-destructive" />
-                    </Button>
-                  </div>
+                  {!(course.id === 'arupia-course' || course.id === 'pogok-course') && (
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" onClick={(e) => handleEditCourse(e, course.id)} className="w-8 h-8">
+                        <Edit className="w-5 h-5 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => handleDeleteClick(e, course.id)} className="w-8 h-8">
+                        <Trash2 className="w-5 h-5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </CardHeader>
               </Card>
             ))}
@@ -402,32 +282,34 @@ const handleEditDialogSave = () => {
                   {courses.slice(3).map(course => (
                     <SelectItem key={course.id} value={course.id} className="text-xl py-4 flex items-center justify-between group">
   <span className="truncate flex-1">{course.name} ({course.courses.length}코스)</span>
-  <span className="flex items-center gap-1 ml-2 opacity-80 group-hover:opacity-100">
-    <Button
-      variant="ghost"
-      size="icon"
-      className="w-8 h-8"
-      tabIndex={-1}
-      onClick={e => {
-        e.stopPropagation();
-        handleEditCourse(e, course.id);
-      }}
-    >
-      <Edit className="w-5 h-5 text-muted-foreground" />
-    </Button>
-    <Button
-      variant="ghost"
-      size="icon"
-      className="w-8 h-8"
-      tabIndex={-1}
-      onClick={e => {
-        e.stopPropagation();
-        handleDeleteClick(e, course.id);
-      }}
-    >
-      <Trash2 className="w-5 h-5 text-destructive" />
-    </Button>
-  </span>
+  {!(course.id === 'arupia-course' || course.id === 'pogok-course') && (
+    <span className="flex items-center gap-1 ml-2 opacity-80 group-hover:opacity-100">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="w-8 h-8"
+        tabIndex={-1}
+        onClick={e => {
+          e.stopPropagation();
+          handleEditCourse(e, course.id);
+        }}
+      >
+        <Edit className="w-5 h-5 text-muted-foreground" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="w-8 h-8"
+        tabIndex={-1}
+        onClick={e => {
+          e.stopPropagation();
+          handleDeleteClick(e, course.id);
+        }}
+      >
+        <Trash2 className="w-5 h-5 text-destructive" />
+      </Button>
+    </span>
+  )}
 </SelectItem>
                   ))}
                 </SelectContent>
@@ -441,20 +323,16 @@ const handleEditDialogSave = () => {
           </Card>
         )}
         <Link href="/add-course">
-          <Button className="w-full h-12 text-base mt-4 bg-blue-100 text-blue-700 border border-blue-100 hover:bg-blue-200">
+          <Button 
+            className="w-full h-12 text-base mt-4 bg-blue-100 text-blue-700 border border-blue-100 hover:bg-blue-200"
+            disabled={courses.length >= (2 + MAX_ADDITIONAL_COURSES)} // 기본 구장 2개 + 추가 가능한 구장 수
+            title={courses.length >= (2 + MAX_ADDITIONAL_COURSES) ? `최대 ${MAX_ADDITIONAL_COURSES}개의 구장만 추가할 수 있습니다` : ''}
+          >
             <PlusCircle className="mr-2 w-5 h-5" />
-            새 구장 추가
+            새 구장 추가 {courses.length >= (2 + MAX_ADDITIONAL_COURSES) && `(${MAX_ADDITIONAL_COURSES}개 제한)`}
           </Button>
         </Link>
 
-        {/* 그래프 영역: 새 구장 추가와 기록 보기 사이 */}
-        <div className="my-6">
-          <LineBarCharts
-            monthlyData={monthlyData}
-            byCourseData={byCourseData}
-            recentRoundsData={recentRoundsData}
-          />
-        </div>
 
       {/* 코스별 파수 수정 다이얼로그 */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -521,13 +399,8 @@ const handleEditDialogSave = () => {
         </DialogContent>
       </Dialog>
 
-      <footer className="mt-8 text-center space-y-4">
-        <Link href="/records">
-          <Button className="w-full h-12 text-base">
-            <History className="mr-2" />
-            기록 보기
-          </Button>
-        </Link>
+      <footer className="mt-8 text-right">
+        <p className="text-xs text-gray-400">© 2025 Made by 하용휘</p>
       </footer>
     </div>
   );
