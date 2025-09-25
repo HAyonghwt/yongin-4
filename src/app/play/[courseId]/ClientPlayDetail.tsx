@@ -257,6 +257,10 @@ function getThemeColor(courseName: string) {
     case 'd': return '#fff';
     case 'e': return '#fb8c00';
     case 'f': return '#8e24aa';
+    case '1차': return '#e53935';  // 1차 = A 코스 색상 (빨강)
+    case '2차': return '#1e88e5';  // 2차 = B 코스 색상 (파랑)
+    case '3차': return '#fbc02d';  // 3차 = C 코스 색상 (노랑)
+    case '4차': return '#fff';     // 4차 = D 코스 색상 (흰색)
     default: return '#2563eb';
   }
 }
@@ -860,9 +864,18 @@ useEffect(() => {
     console.log('course.courses:', course.courses);
   }
 
-  const theme = `course-${(course.courses[activeCourseIndex]?.name || 'a').toLowerCase()}`;
-  const themeColor = getThemeColor(course.courses[activeCourseIndex]?.name);
-  const isWhiteTheme = course.courses[activeCourseIndex]?.name?.toLowerCase() === 'd';
+  // 코스 이름에 따라 테마 설정 (1차,2차,3차,4차는 A,B,C,D로 매핑)
+  const courseName = course.courses[activeCourseIndex]?.name || 'a';
+  const themeMapping: { [key: string]: string } = {
+    '1차': 'a',
+    '2차': 'b', 
+    '3차': 'c',
+    '4차': 'd'
+  };
+  const themeSuffix = themeMapping[courseName] || courseName.toLowerCase();
+  const theme = `course-${themeSuffix}`;
+  const themeColor = getThemeColor(courseName);
+  const isWhiteTheme = themeSuffix === 'd';
   const numberPadButtons = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
   return (
